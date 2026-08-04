@@ -83,6 +83,8 @@ CLASSIFIERS = {
     "RandomForestClassifier": RandomForestClassifier,
     "XGBClassifier": XGBClassifier,
     "MLPClassifier": MLPClassifier,
+    "RidgeClassifier": RidgeClassifier,
+    "LinearSVC": LinearSVC
 }
 
 # ==========================================================
@@ -110,10 +112,7 @@ def scale_descriptors(x_train, x_test):
     return scaler.transform(x_train), scaler.transform(x_test)
 
 def get_predictions(estimator, X):
-    if is_classifier(estimator) and hasattr(estimator, "predict_proba"):
-        return estimator.predict_proba(X)[:, 1].tolist()
-    else:
-        return estimator.predict(X).tolist()
+    return estimator.predict(X).tolist()
 
 def build_model(x_train, x_val, x_test, y_train, y_val, y_test, estimator_class, hopt=True):
 

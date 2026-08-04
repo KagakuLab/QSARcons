@@ -5,14 +5,14 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame, Series, Index
 from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
-from sklearn.metrics import roc_auc_score, average_precision_score, balanced_accuracy_score
+from sklearn.metrics import roc_auc_score, average_precision_score, f1_score
 from abc import ABC, abstractmethod
 from qsarcons.genopt import Individual, GeneticAlgorithm
 from sklearn.utils.multiclass import type_of_target
 
 METRIC_MODES = {
     "r2": "maximize",
-    "balanced_accuracy_score": "maximize",
+    "f1_score": "maximize",
 }
 
 def calc_accuracy(y_true, y_pred):
@@ -24,7 +24,7 @@ def calc_accuracy(y_true, y_pred):
     if task_type == "continuous":
         return  r2_score(y_true, y_pred)
     elif task_type == "binary":
-        return balanced_accuracy_score(y_true, y_pred)
+        return f1_score(y_true, y_pred)
     else:
         raise ValueError("Task type not supported.")
 
@@ -39,9 +39,6 @@ class ConsensusSearch(ABC):
     def _filter_models(self, x: DataFrame, y: List) -> DataFrame:
         """Filter out underperformed models based on baseline metric performance."""
 
-        if self._task_type == "binary":
-            x = (x >= 0.5).astype(int)
-
         baseline_score = 0 if self._task_type == "continuous" else 0.5
         filtered_cols = [col for col in x.columns if calc_accuracy(y, x[col]) > baseline_score]
 
@@ -53,8 +50,6 @@ class ConsensusSearch(ABC):
 
     @abstractmethod
     def _run_with_cons_size(self, x, y, cons_size):
-        if self._task_type == "binary":
-            x = (x >= 0.5).astype(int)
         return self._run_with_cons_size(x, y, cons_size)
 
     def run(self, x: DataFrame, y: List):
@@ -87,25 +82,12 @@ class ConsensusSearch(ABC):
             return list(x_subset.mean(axis=1))
 
         elif self._task_type == "binary":
-
-            # Convert probabilities to 0/1 per model
-            binary_preds = (x_subset >= 0.5).astype(int)
-
-            # Majority voting across models
-            votes = binary_preds.sum(axis=1)
-            majority = (votes >= (binary_preds.shape[1] / 2)).astype(int)
+            votes = x_subset.sum(axis=1)
+            majority = (votes >= (x_subset.shape[1] / 2)).astype(int)
             return list(majority)
         else:
             raise ValueError("Task type not set. Run `.run()` first.")
 
-    def predict_proba(self, x_subset: DataFrame) -> List:
-
-        if self._task_type == "continuous":
-            raise ValueError("predict_proba is not available for regression consensus models.")
-        elif self._task_type == "binary":
-            return list(x_subset.mean(axis=1))
-        else:
-            raise ValueError("Task type not set. Run `.run()` first.")
 
 class RandomSearch(ConsensusSearch):
     """Randomized search for optimal regression consensus."""

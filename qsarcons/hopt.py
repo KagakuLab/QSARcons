@@ -98,10 +98,7 @@ DEFAULT_PARAM_GRID_CLASSIFIERS = {
 }
 
 def get_predictions(estimator, X):
-    if is_classifier(estimator) and hasattr(estimator, "predict_proba"):
-        return estimator.predict_proba(X)[:, 1].tolist()
-    else:
-        return estimator.predict(X).tolist()
+    return estimator.predict(X).tolist()
 
 def single_split_score(est, x, y, scoring, test_size=0.2, random_state=42):
     """
@@ -148,7 +145,7 @@ class StepwiseHopt:
         if type_of_target(y) == "continuous":
             scoring = "r2"
         elif type_of_target(y) == "binary":
-            scoring = "roc_auc"
+            scoring = "f1"
         else:
             raise ValueError("Unknown target type")
 
