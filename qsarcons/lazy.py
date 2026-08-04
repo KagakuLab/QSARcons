@@ -73,7 +73,6 @@ REGRESSORS = {
     "RidgeRegression": Ridge,
     "PLSRegression": PLSRegression,
     "LinearSVR": LinearSVR,
-    # "SVR": SVR,
     "MLPRegressor": MLPRegressor,
     "RandomForestRegressor": RandomForestRegressor,
     "XGBRegressor": XGBRegressor,
@@ -81,7 +80,6 @@ REGRESSORS = {
 
 CLASSIFIERS = {
     "LogisticRegression": LogisticRegression,
-    # "SVC": SVC,
     "RandomForestClassifier": RandomForestClassifier,
     "XGBClassifier": XGBClassifier,
     "MLPClassifier": MLPClassifier,
