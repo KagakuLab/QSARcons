@@ -73,41 +73,23 @@ REGRESSORS = {
     "RidgeRegression": Ridge,
     "PLSRegression": PLSRegression,
     "LinearSVR": LinearSVR,
-    # "SVR": SVR,
     "MLPRegressor": MLPRegressor,
     "RandomForestRegressor": RandomForestRegressor,
     "XGBRegressor": XGBRegressor,
-    "CatBoostRegressor": CatBoostRegressor,
 }
 
 CLASSIFIERS = {
     "LogisticRegression": LogisticRegression,
-    # "SVC": SVC,
     "RandomForestClassifier": RandomForestClassifier,
     "XGBClassifier": XGBClassifier,
     "MLPClassifier": MLPClassifier,
-    "CatBoostClassifier": CatBoostClassifier,
+    "RidgeClassifier": RidgeClassifier,
+    "LinearSVC": LinearSVC
 }
 
 # ==========================================================
 # Utility Functions
 # ==========================================================
-def _worker(func, args, kwargs):
-    try:
-        return func(*args, **kwargs)
-    except Exception as e:
-        return {"error": repr(e)}
-
-def run_in_subprocess(func, *args, **kwargs):
-    with ProcessPoolExecutor(max_workers=1) as ex:
-        future = ex.submit(_worker, func, args, kwargs)
-        result = future.result()
-
-    if isinstance(result, dict) and "error" in result:
-        raise RuntimeError(result["error"])
-
-    return result
-
 def clean_descriptors(x):
     x = np.array(x, dtype=float)
     col_means = np.nanmean(x, axis=0)
@@ -130,10 +112,7 @@ def scale_descriptors(x_train, x_test):
     return scaler.transform(x_train), scaler.transform(x_test)
 
 def get_predictions(estimator, X):
-    if is_classifier(estimator) and hasattr(estimator, "predict_proba"):
-        return estimator.predict_proba(X)[:, 1].tolist()
-    else:
-        return estimator.predict(X).tolist()
+    return estimator.predict(X).tolist()
 
 def build_model(x_train, x_val, x_test, y_train, y_val, y_test, estimator_class, hopt=True):
 
@@ -232,18 +211,16 @@ class LazyML:
                     print(f"[{current_model}/{total_models}] Running model: {model_name}", flush=True)
 
                 start = time.time()
-                with OutputSuppressor():
-                    pred_train, pred_val, pred_test = run_in_subprocess(
-                        build_model,
-                        x_train,
-                        x_val,
-                        x_test,
-                        y_train,
-                        y_val,
-                        y_test,
-                        estimator,
-                        self.hopt
-                    )
+                pred_train, pred_val, pred_test = build_model(
+                    x_train,
+                    x_val,
+                    x_test,
+                    y_train,
+                    y_val,
+                    y_test,
+                    estimator,
+                    self.hopt
+                )
                 elapsed_min = (time.time() - start) / 60
 
                 # 4. Write predictions

@@ -7,6 +7,7 @@ from sklearn.base import is_classifier
 
 DEFAULT_PARAM_GRID_REGRESSORS = {
     "Ridge": {
+        "random_state":42,
         "alpha": [1e-4, 1e-3, 1e-2, 1e-1, 1.0, 10.0],
         "solver": ["auto", "saga", "lsqr"],
     },
@@ -14,36 +15,33 @@ DEFAULT_PARAM_GRID_REGRESSORS = {
         "n_components": [2, 4, 8, 16, 32],
     },
     "RandomForestRegressor": {
+        "random_state":42,
         "n_estimators": [50, 100, 200, 400],
         "max_depth": [5, 10, 20, None],
         "max_features": ["sqrt", "log2", None],
     },
     "XGBRegressor": {
+        "random_state":42,
         "n_estimators": [50, 100, 200],
         "max_depth": [3, 6, 9],
         "learning_rate": [0.01, 0.05, 0.1, 0.3],
         "subsample": [0.6, 0.8, 1.0],
     },
-    "CatBoostRegressor": {
-        "iterations": [100, 300, 500],
-        "depth": [4, 6, 8, 10],
-        "learning_rate": [0.01, 0.05, 0.1],
-        "l2_leaf_reg": [1, 3, 5, 7],
-        "bagging_temperature": [0, 0.5, 1.0],
-        "border_count": [32, 64, 128],
-    },
     "MLPRegressor": {
+        "random_state":42,
         "activation": ["relu", "tanh"],
         "learning_rate_init": [1e-4, 1e-3],
         "hidden_layer_sizes": [(128,), (512, 256, 128), (2048, 1024, 512, 256, 128, 64)],
         "max_iter": [300, 1000],
     },
     "SVR": {
+        "random_state":42,
         "C": [0.1, 1, 10, 100],
         "kernel": ["linear", "rbf", "poly"],
         "gamma": ["scale", "auto"],
     },
     "LinearSVR": {
+        "random_state":42,
         "C": [0.01, 0.1, 1.0, 10.0, 100.0],
         "epsilon": [0.001, 0.01, 0.1, 0.5],
         "loss": ["epsilon_insensitive", "squared_epsilon_insensitive"],
@@ -53,45 +51,45 @@ DEFAULT_PARAM_GRID_REGRESSORS = {
 
 DEFAULT_PARAM_GRID_CLASSIFIERS = {
     "RidgeClassifier": {
+        "random_state":42,
         "alpha": [1e-4, 1e-3, 1e-2, 1e-1, 1.0, 10.0],
         "solver": ["auto", "saga", "lsqr"],
+        "random_state":42
     },
     "LogisticRegression": {
+        "random_state":42,
         "C": [0.01, 0.1, 1.0, 10.0, 100.0],
         "solver": ["liblinear", "lbfgs", "saga"],
         "max_iter": [500, 2000],
     },
     "RandomForestClassifier": {
+        "random_state":42,
         "n_estimators": [50, 100, 200, 400],
         "max_depth": [5, 10, 20, None],
         "max_features": ["sqrt", "log2", None],
     },
     "XGBClassifier": {
+        "random_state":42,
         "n_estimators": [50, 100, 200],
         "max_depth": [3, 6, 9],
         "learning_rate": [0.01, 0.05, 0.1, 0.3],
         "subsample": [0.6, 0.8, 1.0],
     },
-    "CatBoostClassifier": {
-        "iterations": [100, 300, 500],
-        "depth": [4, 6, 8, 10],
-        "learning_rate": [0.01, 0.05, 0.1],
-        "l2_leaf_reg": [1, 3, 5, 7],
-        "bagging_temperature": [0, 0.5, 1.0],
-        "border_count": [32, 64, 128],
-    },
     "MLPClassifier": {
+        "random_state":42,
         "activation": ["relu", "tanh"],
         "learning_rate_init": [1e-4, 1e-3],
         "hidden_layer_sizes": [(128,), (512, 256, 128), (2048, 1024, 512, 256, 128, 64)],
         "max_iter": [300, 1000],
          },
     "SVC": {
+        "random_state":42,
         "C": [0.1, 1, 10, 100],
         "kernel": ["linear", "rbf", "poly"],
         "gamma": ["scale", "auto"],
     },
     "LinearSVC": {
+        "random_state":42,
         "C": [0.01, 0.1, 1.0, 10.0, 100.0],
         "loss": ["hinge", "squared_hinge"],
         "penalty": ["l2"],
@@ -100,10 +98,7 @@ DEFAULT_PARAM_GRID_CLASSIFIERS = {
 }
 
 def get_predictions(estimator, X):
-    if is_classifier(estimator) and hasattr(estimator, "predict_proba"):
-        return estimator.predict_proba(X)[:, 1].tolist()
-    else:
-        return estimator.predict(X).tolist()
+    return estimator.predict(X).tolist()
 
 def single_split_score(est, x, y, scoring, test_size=0.2, random_state=42):
     """
@@ -150,7 +145,7 @@ class StepwiseHopt:
         if type_of_target(y) == "continuous":
             scoring = "r2"
         elif type_of_target(y) == "binary":
-            scoring = "balanced_accuracy"
+            scoring = "f1"
         else:
             raise ValueError("Unknown target type")
 

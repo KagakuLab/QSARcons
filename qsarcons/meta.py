@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from qsarcons.lazy import LazyML
-from qsarcons.consensus import GeneticSearch
+from qsarcons.consensus import SystematicSearch, GeneticSearch
 
 class ConsensusModel:
 
@@ -9,7 +9,8 @@ class ConsensusModel:
         self.output_folder = output_folder
         self.verbose = verbose
         self.lazy_ml = LazyML(hopt=hopt, output_folder=output_folder, verbose=verbose)
-        self.cons_search = GeneticSearch(cons_size="auto", n_iter=50, verbose=False)
+        self.cons_search = GeneticSearch(cons_size="auto", n_iter=50, verbose=verbose)
+
         self.best_cons = None
 
     def run(self, df_train, df_test):
