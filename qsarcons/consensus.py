@@ -132,13 +132,33 @@ class GeneticSearch(ConsensusSearch):
     def _run_with_cons_size(self, x, y, cons_size) -> Index:
 
         def objective(ind: Individual) -> float:
-            y_pred = self.predict(x.iloc[:, list(ind)])
+            y_pred = self.predict(x.iloc[:, list(ind.genes)])
             return calc_accuracy(y, y_pred)
 
-        space = range(len(x.columns))
-        ga = GeneticAlgorithm(task="maximize", pop_size=100, crossover_prob=0.90, mutation_prob=0.2, elitism=True, verbose=False)
-        ga.set_fitness(objective)
-        ga.initialize(space, ind_size=cons_size)
+        # When cons_size == "auto", this method runs once per candidate size, so per-generation
+        # printing is replaced by a short per-size summary to avoid flooding the output.
+        auto_mode = self.cons_size == "auto"
+
+        if self.verbose:
+            if auto_mode:
+                print(f"Genetic optimization for consensus size {cons_size}:")
+            else:
+                print("Genetic consensus optimization:")
+
+        ga = GeneticAlgorithm(
+            fitness_func=objective,
+            n_genes=len(x.columns),
+            ind_size=cons_size,
+            pop_size=100,
+            crossover_prob=0.90,
+            mutation_prob=0.2,
+            verbose=self.verbose and not auto_mode,
+        )
         ga.run(n_iter=self.n_iter)
 
-        return x.columns[list(ga.get_global_best())]
+        if self.verbose and auto_mode:
+            print(f"The first generation best score: {ga.best_individuals[0].score:.3f}")
+            print(f"The last generation best score: {ga.best_individuals[-1].score:.3f}")
+            print()
+
+        return x.columns[list(ga.get_solution().genes)]
