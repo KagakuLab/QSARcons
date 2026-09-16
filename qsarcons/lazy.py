@@ -11,23 +11,17 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from concurrent.futures import ProcessPoolExecutor
-
-from sklearn.base import is_classifier
 from sklearn.linear_model import LogisticRegression, Ridge, RidgeClassifier
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.neural_network import MLPRegressor, MLPClassifier
 from xgboost import XGBRegressor, XGBClassifier
-from catboost import CatBoostRegressor, CatBoostClassifier
 from sklearn.svm import SVR, SVC, LinearSVR, LinearSVC
-from sklearn.utils.multiclass import type_of_target
 from sklearn.preprocessing import MinMaxScaler
 from molfeat.trans import MoleculeTransformer
 from molfeat.calc.pharmacophore import Pharmacophore2D
 
 from qsarcons.hopt import StepwiseHopt, DEFAULT_PARAM_GRID_REGRESSORS, DEFAULT_PARAM_GRID_CLASSIFIERS
-from qsarcons.logging import OutputSuppressor
 from sklearn.utils.multiclass import type_of_target
 
 from rdkit import RDLogger
