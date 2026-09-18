@@ -44,8 +44,15 @@ predictions for new molecules back.
         "OC(=O)Cc1ccccc1Nc1c(Cl)cccc1Cl",
         "COc1ccc2c(c1)c(CC(=O)O)c(C)n2C(=O)c1ccc(Cl)cc1",
         "OC(=O)C(C)c1cccc(c1)C(=O)c1ccccc1",
+        "CC(=O)Oc1ccccc1C(=O)O",
+        "Cc1ccc(cc1)S(=O)(=O)N",
+        "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+        "OC(=O)c1ccccc1O",
+        "Clc1ccc(cc1)C(c1ccc(Cl)cc1)C(Cl)(Cl)Cl",
+        "CC(C)NCC(O)COc1cccc2ccccc12",
+        "CCOC(=O)c1ccc(N)cc1",
     ]
-    y_train = [5.2, 5.9, 6.1, 7.0, 5.6]
+    y_train = [5.2, 5.9, 6.1, 7.0, 5.6, 4.9, 3.8, 4.1, 4.6, 6.8, 5.0, 4.4]
 
     smiles_test = ["CC(C(=O)O)Oc1cccc(c1)-c1ccccc1", "CC(C(=O)O)c1ccc(cc1)-c1ccc(F)cc1"]
 

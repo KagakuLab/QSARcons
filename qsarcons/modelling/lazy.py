@@ -128,7 +128,14 @@ def clean_descriptors(x):
     return x
 
 def calc_descriptors(smi_list, calculator):
-    x = calculator(smi_list)
+    """Featurize smi_list, tolerating individual molecules a given descriptor can't handle: their
+    row is left as NaN and filled in by clean_descriptors' column-mean imputation, rather than the
+    whole batch raising (some descriptors can fail on a specific, otherwise-valid molecule)."""
+    features, ids = calculator(smi_list, ignore_errors=True)
+    n_features = np.asarray(features).shape[1] if len(features) else 1
+    x = np.full((len(smi_list), n_features), np.nan)
+    for pos, idx in enumerate(ids):
+        x[idx] = features[pos]
     x = clean_descriptors(x)
     return x
 
@@ -290,9 +297,10 @@ class LazyML:
 
         ready_descriptors = {}
         for desc_name, desc_calc in DESCRIPTORS.items():
-            x_train = calc_descriptors(smi_train, desc_calc)
-            x_val = calc_descriptors(smi_val, desc_calc)
-            x_test = calc_descriptors(smi_test, desc_calc) if smi_test else np.empty((0, x_train.shape[1]))
+            x_all = calc_descriptors(smi_train + smi_val + smi_test, desc_calc)
+            x_train = x_all[: len(smi_train)]
+            x_val = x_all[len(smi_train): len(smi_train) + len(smi_val)]
+            x_test = x_all[len(smi_train) + len(smi_val):]
             ready_descriptors[desc_name] = (x_train, x_val, x_test)
 
             if self.verbose:
