@@ -3,6 +3,18 @@ import os
 import logging
 import threading
 
+
+class FailedMolecule:
+    """A sentinel for a SMILES string that could not be parsed or processed anywhere in the pipeline."""
+
+    def __init__(self, smiles, message="failed"):
+        self.smiles = smiles
+        self.message = message
+
+    def __repr__(self):
+        return f"{self.smiles} -> {self.message}"
+
+
 class OutputSuppressor:
     """
     Completely suppress ALL output:

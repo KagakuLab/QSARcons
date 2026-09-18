@@ -2,35 +2,24 @@
 QSARcons - smart search for consensus of QSAR models
 --------------------------------------------------------------------
 
-The motivation behind this project is that there are many available chemical descriptors and machine learning methods,
-and usually, it is not obvious which combination to prefer for modelling the target property of the molecule.
-Therefore, the idea is just to build multiple (>100) simple individual QSAR models with diverse descriptors and algorithms,
-and then a genetic algorithm to smartly optimize the subset of models delivering the best performance on the validation dataset.
+The motivation behind this project is that there are many available chemical descriptors and machine learning
+methods, and usually, it is not obvious which combination to prefer for modelling the target property of the
+molecule. Therefore, the idea is just to build multiple (>100) simple individual QSAR models with diverse
+descriptors and algorithms, and then search for the subset of models whose consensus performs best on a
+validation dataset.
 
-Motivation
---------------------------------------------------------------------
+**Ready to use:**
 
-**1. Simple design**: ``QSARcons`` focuses on simplicity of use. The default pipeline just requires training and test data.
+- 2D descriptor calculation (RDKit and MolFeat fingerprints, physicochemical descriptors, and pharmacophores)
+- Traditional machine learning algorithms (Ridge, PLS, SVR, Random Forest, XGBoost, MLP), with optional
+  in-house stepwise hyperparameter optimization
+- Consensus model search: random, systematic, and genetic search strategies
+- Regression and binary classification tasks are currently supported
 
-**2. Traditional QSAR**: ``QSARcons`` includes a wide range of traditional molecular descriptors and machine learning algorithms, providing a transparent baseline for comparison with more advanced approaches like deep learning-based or complex QSAR workflows.
+**Under development:**
 
-**3. Universal workflow** - ``QSARcons`` can be applied to any type of chemical property modelling.
-
-Overview
---------------------------------------------------------------------
-QSARcons provides a two-layer workflow.
-
-**1. Model generation**
-   Build multiple QSAR models (>100) using 2D chemical descriptors and traditional machine learning algorithms.
-   The individual model building pipeline is kept simple, without advanced data preprocessing. Optional in-house stepwise hyperparameter
-   optimization is available for all ML methods.
-
-**2. Consensus search**
-   Identify the optimal subset of QSAR models using several search strategies:
-
-- Random search
-- Systematic search
-- Genetic search
+- **QSARcons Pro:** additional workflows for building individual models (e.g. ``chemprop`` and ``QSARmil``) to
+  combine traditional and advanced modelling approaches into stronger consensuses
 
 Installation
 --------------------------------------------------------------------
@@ -39,37 +28,54 @@ Installation
 
     pip install qsarcons
 
-QSARcons benchmarking
+Beginner usage
 --------------------------------------------------------------------
-``QSARcons`` can be easily benchmarked against alternative approaches. For that, just call the default pipeline function below.
-Input data are dataframes where the first column is molecule SMILES and the second column is molecule property (regression or binary classification).
+
+For a predefined pipeline that takes zero QSAR knowledge and zero setup: hand it your training data and get
+predictions for new molecules back.
 
 .. code-block:: python
 
-    from datasets import load_dataset
-    from qsarcons.meta import ConsensusModel
+    from qsarcons.modelling.meta import ConsensusRegressor
 
-    train_df = load_dataset("openadmet/openadmet-expansionrx-challenge-data", split="train").to_pandas()
-    test_df = load_dataset("openadmet/openadmet-expansionrx-challenge-data", split="test").to_pandas()
+    smiles_train = [
+        "CC(C)Cc1ccc(cc1)C(C)C(=O)O",
+        "COc1ccc2cc(ccc2c1)C(C)C(=O)O",
+        "OC(=O)Cc1ccccc1Nc1c(Cl)cccc1Cl",
+        "COc1ccc2c(c1)c(CC(=O)O)c(C)n2C(=O)c1ccc(Cl)cc1",
+        "OC(=O)C(C)c1cccc(c1)C(=O)c1ccccc1",
+    ]
+    y_train = [5.2, 5.9, 6.1, 7.0, 5.6]
 
-    prop_name = "Caco-2 Permeability Efflux"
-    train_df = train_df[["SMILES", prop_name]].dropna()
-    test_df = test_df[["SMILES", prop_name]].dropna()
+    smiles_test = ["CC(C(=O)O)Oc1cccc(c1)-c1ccccc1", "CC(C(=O)O)c1ccc(cc1)-c1ccc(F)cc1"]
 
-    output_folder = f"{prop_name}_qsarcons"
+    # train and predict in one call - there's no separate save/load step
+    model = ConsensusRegressor(consensus="genetic", hopt=False, verbose=True)
+    y_pred = model.train_predict(smiles_train, y_train, smiles_test)
 
-    model = ConsensusModel(hopt=False, output_folder=output_folder, verbose=True)
-    test_df_pred = model.run_predict(train_df, test_df)
+Use ``ConsensusRegressor`` for continuous properties and ``ConsensusClassifier`` for binary classification.
+The ``consensus`` argument selects the search strategy: ``"genetic"`` (default), ``"random"``, or ``"systematic"``.
+See the full walkthrough in
+`Notebook_1_QSARcons_pipeline.ipynb <colab/Notebook_1_QSARcons_pipeline.ipynb>`_.
 
-    print(model.best_cons)
+Professional usage
+--------------------------------------------------------------------
 
-Colab
----------------------------------------------------------------------
+Modify or build your own modelling pipeline by combining ``QSARcons``'s individual modules (descriptor
+calculators, the individual model builder in ``qsarcons.modelling.lazy``, and the consensus search strategies
+in ``qsarcons.consensus``) directly. See
+`Notebook_1_QSARcons_pipeline.ipynb <colab/Notebook_1_QSARcons_pipeline.ipynb>`__ for a full example that loads an
+external benchmark dataset, builds the individual model library, and compares all three consensus strategies.
 
-See an example in `QSARcons pipeline <https://colab.research.google.com/github/KagakuAI/QSARcons/blob/main/colab/Notebook_1_QSARcons_pipeline.ipynb>`_ .
+Tutorials
+--------------------------------------------------------------------
+
+- `Notebook_1_QSARcons_pipeline.ipynb <colab/Notebook_1_QSARcons_pipeline.ipynb>`__ - the full pipeline, from raw
+  SMILES to individual models to a searched consensus, also runnable directly in
+  `Colab <https://colab.research.google.com/github/KagakuAI/QSARcons/blob/main/colab/Notebook_1_QSARcons_pipeline.ipynb>`_.
 
 QSARcons Basic vs. QSARcons Pro
----------------------------------------------------------------------
+--------------------------------------------------------------------
 The QSARcons idea is that diverse and strong individual models can be combined to even stronger consensus.
 Currently, two versions are under development:
 
