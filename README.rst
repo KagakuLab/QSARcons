@@ -28,7 +28,7 @@ Installation
 
     pip install qsarcons
 
-Beginner usage
+Basic usage
 --------------------------------------------------------------------
 
 For a predefined pipeline that takes zero QSAR knowledge and zero setup: hand it your training data and get
@@ -64,22 +64,6 @@ Use ``ConsensusRegressor`` for continuous properties and ``ConsensusClassifier``
 The ``consensus`` argument selects the search strategy: ``"genetic"`` (default), ``"random"``, or ``"systematic"``.
 See the full walkthrough in
 `Notebook_1_QSARcons_pipeline.ipynb <colab/Notebook_1_QSARcons_pipeline.ipynb>`_.
-
-Professional usage
---------------------------------------------------------------------
-
-Modify or build your own modelling pipeline by combining ``QSARcons``'s individual modules (descriptor
-calculators, the individual model builder in ``qsarcons.modelling.lazy``, and the consensus search strategies
-in ``qsarcons.consensus``) directly. See
-`Notebook_1_QSARcons_pipeline.ipynb <colab/Notebook_1_QSARcons_pipeline.ipynb>`__ for a full example that loads an
-external benchmark dataset, builds the individual model library, and compares all three consensus strategies.
-
-Tutorials
---------------------------------------------------------------------
-
-- `Notebook_1_QSARcons_pipeline.ipynb <colab/Notebook_1_QSARcons_pipeline.ipynb>`__ - the full pipeline, from raw
-  SMILES to individual models to a searched consensus, also runnable directly in
-  `Colab <https://colab.research.google.com/github/KagakuAI/QSARcons/blob/main/colab/Notebook_1_QSARcons_pipeline.ipynb>`_.
 
 QSARcons Basic vs. QSARcons Pro
 --------------------------------------------------------------------
