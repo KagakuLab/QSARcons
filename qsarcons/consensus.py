@@ -85,8 +85,6 @@ class ConsensusSearch(ABC):
             votes = x_subset.sum(axis=1)
             majority = (votes >= (x_subset.shape[1] / 2)).astype(int)
             return list(majority)
-        else:
-            raise ValueError("Task type not set. Run `.run()` first.")
 
 
 class RandomSearch(ConsensusSearch):
@@ -135,8 +133,6 @@ class GeneticSearch(ConsensusSearch):
             y_pred = self.predict(x.iloc[:, list(ind.genes)])
             return calc_accuracy(y, y_pred)
 
-        # When cons_size == "auto", this method runs once per candidate size, so per-generation
-        # printing is replaced by a short per-size summary to avoid flooding the output.
         auto_mode = self.cons_size == "auto"
 
         if self.verbose:

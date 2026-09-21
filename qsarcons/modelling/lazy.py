@@ -79,40 +79,6 @@ CLASSIFIERS = {
     "LinearSVC": LinearSVC,
 }
 
-# Reduced hyperparameter grids for the two slowest estimators (deep MLPs, large forests), used instead of
-# hopt.py's full grids to keep lazy model building fast. Every other estimator keeps its full grid.
-REDUCED_PARAM_GRID_REGRESSORS = {
-    "MLPRegressor": {
-        "random_state": 42,
-        "activation": ["relu", "tanh"],
-        "learning_rate_init": [1e-3],
-        "hidden_layer_sizes": [(128,), (512, 256, 128)],
-        "max_iter": [500],
-    },
-    "RandomForestRegressor": {
-        "random_state": 42,
-        "n_estimators": [100, 200],
-        "max_depth": [5, 10, 20],
-        "max_features": ["sqrt", "log2"],
-    },
-}
-
-REDUCED_PARAM_GRID_CLASSIFIERS = {
-    "MLPClassifier": {
-        "random_state": 42,
-        "activation": ["relu", "tanh"],
-        "learning_rate_init": [1e-3],
-        "hidden_layer_sizes": [(128,), (512, 256, 128)],
-        "max_iter": [500],
-    },
-    "RandomForestClassifier": {
-        "random_state": 42,
-        "n_estimators": [100, 200],
-        "max_depth": [5, 10, 20],
-        "max_features": ["sqrt", "log2"],
-    },
-}
-
 # ==========================================================
 # Utility Functions
 # ==========================================================
@@ -187,9 +153,9 @@ def build_model(x_train, x_val, x_test, y_train, y_val, estimator_class, hopt, t
         is_classification = task == "binary"
 
         if is_classification:
-            param_grid = REDUCED_PARAM_GRID_CLASSIFIERS.get(est_name) or DEFAULT_PARAM_GRID_CLASSIFIERS.get(est_name)
+            param_grid = DEFAULT_PARAM_GRID_CLASSIFIERS.get(est_name)
         else:
-            param_grid = REDUCED_PARAM_GRID_REGRESSORS.get(est_name) or DEFAULT_PARAM_GRID_REGRESSORS.get(est_name)
+            param_grid = DEFAULT_PARAM_GRID_REGRESSORS.get(est_name)
 
         estimator_instance = estimator_class()
         stepwise_hopt = StepwiseHopt(estimator_instance, param_grid, verbose=False)
