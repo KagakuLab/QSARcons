@@ -1,9 +1,27 @@
 import pytest
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from qsarcons.lazy import LazyML
+from qsarcons.modelling.lazy import LazyML
 from qsarcons.consensus import RandomSearch, SystematicSearch, GeneticSearch
+
+
+class MockEstimator:
+    """A fast, deterministic stand-in for a real sklearn-style estimator - usable directly as a
+    REGRESSORS/CLASSIFIERS entry (a class, constructible with arbitrary hopt-grid kwargs)."""
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        self.mean_y = 0.0
+
+    def fit(self, x, y):
+        self.mean_y = float(np.mean(list(y)))
+        return self
+
+    def predict(self, x):
+        return np.full(len(x), self.mean_y)
+
 
 # -----------------------------
 # Dataset loader
@@ -39,26 +57,32 @@ def classification_data():
 def regression_folder(regression_data):
     df_train, df_val, df_test = regression_data
     out = "regression_models"
-    lazy = LazyML(task="regression", hopt=True, output_folder=out, verbose=False)
-    lazy.run(df_train, df_val, df_test)
+    lazy = LazyML(task="continuous", hopt=True, output_folder=out, verbose=False)
+    lazy.run(
+        df_train.iloc[:, 0], df_train.iloc[:, 1],
+        df_val.iloc[:, 0], df_val.iloc[:, 1],
+        df_test.iloc[:, 0],
+    )
     return out
 
 @pytest.fixture
 def classification_folder(classification_data):
     df_train, df_val, df_test = classification_data
     out = "classification_models"
-    lazy = LazyML(task="classification", hopt=True, output_folder=out, verbose=False)
-    lazy.run(df_train, df_val, df_test)
+    lazy = LazyML(task="binary", hopt=True, output_folder=out, verbose=False)
+    lazy.run(
+        df_train.iloc[:, 0], df_train.iloc[:, 1],
+        df_val.iloc[:, 0], df_val.iloc[:, 1],
+        df_test.iloc[:, 0],
+    )
     return out
 
 @pytest.fixture
 def consensus_searchers():
-    metric = "auto"
     cons_size = "auto"
     return [
-        ("Best", SystematicSearch(cons_size=1, metric=metric)),
-        ("Random", RandomSearch(cons_size=cons_size, n_iter=50, metric=metric)),
-        ("Systematic", SystematicSearch(cons_size=cons_size, metric=metric)),
-        ("Genetic", GeneticSearch(cons_size=cons_size, n_iter=20, metric=metric))
+        ("Best", SystematicSearch(cons_size=1)),
+        ("Random", RandomSearch(cons_size=cons_size, n_iter=50)),
+        ("Systematic", SystematicSearch(cons_size=cons_size)),
+        ("Genetic", GeneticSearch(cons_size=cons_size, n_iter=20)),
     ]
-

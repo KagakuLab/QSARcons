@@ -1,391 +1,237 @@
 import random
-from copy import deepcopy
-from random import randint
-from statistics import pstdev, pvariance
-from typing import Callable, List, Tuple, Union, Iterator
+from collections import Counter
+from operator import attrgetter
+from typing import Callable, Iterator, List
 
 
 class Individual:
-    """
-    Represents a single solution (chromosome) in a genetic algorithm.
+    """A candidate solution: an unordered set of unique gene values (e.g. model indices in a consensus)."""
 
-    Each individual consists of a list of genes (integers or categorical values),
-    which can be mutated, crossed over, and evaluated for fitness.
-
-    Attributes
-    ----------
-    container : List[int]
-        The list of genes that define this individual.
-    score : float
-        The raw evaluation score of the individual (objective function value).
-    fitness : float
-        The normalized fitness value used for selection.
-    rank : int
-        The individual's rank within the current population after sorting.
-    """
-
-    def __init__(self, container: List[int]) -> None:
-        self.container = container
-        self.score = 0
-        self.fitness = 0
-        self.rank = 0
-
-    def __getitem__(self, item: slice) -> List[int]:
-        """Allow slicing access to the genes."""
-        return self.container[item]
-
-    def __setitem__(self, key: Union[int, slice], value: Union[List[int], int]) -> None:
-        """Allow item or slice assignment for genes."""
-        self.container[key] = value
-
-    def __delitem__(self, key):
-        """Delete a gene or slice of genes."""
-        del self.container[key]
-
-    def __iter__(self) -> Iterator:
-        """Enable iteration over genes."""
-        return iter(self.container)
-
-    def __len__(self) -> int:
-        """Return the number of genes."""
-        return len(self.container)
+    def __init__(self, genes: List[int]) -> None:
+        self.genes = list(genes)
+        self.score = 0.0
 
     def __eq__(self, other: "Individual") -> bool:
-        """Equality check based on the hash of the gene set."""
-        return hash(self) == hash(other)
+        """Two individuals are equal if they contain the same set of genes."""
+        return sorted(self.genes) == sorted(other.genes)
 
     def __hash__(self) -> int:
-        """Generate a hash based on sorted genes to ensure uniqueness."""
-        return hash(tuple(sorted(self.container)))
+        return hash(tuple(sorted(self.genes)))
 
-    def __repr__(self):
-        """String representation of the individual (its gene sequence)."""
-        return repr(self.container)
+    def __repr__(self) -> str:
+        return repr(sorted(self.genes))
 
 
 class Population:
-    """
-    Represents a collection of individuals in a genetic algorithm.
+    """A collection of individuals, with sorting support."""
 
-    The population handles evaluation, sorting, statistics, and ranking.
-    """
-
-    def __init__(self, task: str = "minimize") -> None:
-        self.container = []
-        self.task = task
-        self.evaluator = None
-        self.stats = {}
+    def __init__(self) -> None:
+        self.individuals: List[Individual] = []
 
     def __len__(self) -> int:
-        return len(self.container)
+        return len(self.individuals)
 
-    def __getitem__(self, item: int) -> Individual:
-        return self.container[item]
-
-    def __setitem__(self, index: int, value: Individual) -> None:
-        self.container[index] = value
-
-    def __iter__(self) -> Iterator:
-        return iter(self.container)
-
-    def __repr__(self):
-        return repr(self.container)
+    def __iter__(self) -> Iterator[Individual]:
+        return iter(self.individuals)
 
     def append(self, individual: Individual) -> None:
-        """Add a new individual to the population."""
-        self.container.append(individual)
-
-    def clear(self) -> None:
-        """Remove all individuals from the population."""
-        self.container.clear()
-
-    def evaluate(self) -> "Population":
-        """
-        Evaluate all individuals in the population using the assigned evaluator.
-        """
-        for ind in self:
-            ind.score = self.evaluator(ind)
-        return self
-
-    def rank(self):
-        """Assign rank numbers to individuals after sorting."""
-        self.sort()
-        for rank, ind in enumerate(reversed(self), 1):
-            ind.rank = rank
+        self.individuals.append(individual)
 
     def sort(self) -> "Population":
-        """Sort the population by score according to the optimization task."""
-        if self.task == "maximize":
-            self.container.sort(key=key_raw_score, reverse=True)
-        else:
-            self.container.sort(key=key_raw_score)
+        """Sort individuals by score, best (highest) first."""
+        self.individuals.sort(key=attrgetter("score"), reverse=True)
         return self
 
     def best_score(self) -> Individual:
-        """Return the best individual based on raw score."""
-        if self.task == "maximize":
-            return max(self, key=key_raw_score)
-        else:
-            return min(self, key=key_raw_score)
-
-    def best_fitness(self):
-        """Return the best individual based on fitness value."""
-        if self.task == "maximize":
-            return max(self, key=key_fitness_score)
-        else:
-            return min(self, key=key_fitness_score)
-
-    def calc_stat(self) -> "Population":
-        """
-        Compute descriptive statistics for the population:
-        - max/min/mean score
-        - variance and standard deviation
-        - optional fitness metrics if available
-        """
-        sum_score = sum(self[i].score for i in range(len(self)))
-
-        self.stats.update(
-            {
-                "max_score": max(self, key=key_raw_score).score,
-                "min_score": min(self, key=key_raw_score).score,
-                "mean_score": sum_score / len(self),
-                "var_score": pvariance(ind.score for ind in self),
-                "dev_score": pstdev(ind.score for ind in self),
-                "diversity": None,
-            }
-        )
-
-        if self.best_score().fitness is not None:
-            fit_sum = sum(self[i].fitness for i in range(len(self)))
-            self.stats.update(
-                {
-                    "max_fitness": max(self, key=key_fitness_score).fitness,
-                    "min_fitness": min(self, key=key_fitness_score).fitness,
-                    "mean_fitness": fit_sum / len(self),
-                }
-            )
-
-        return self
+        """Return the individual with the highest score."""
+        best = max(self, key=attrgetter("score"))
+        return best
 
 
 class GeneticAlgorithm:
-    """
-    Core implementation of a Genetic Algorithm (GA).
-
-    Supports population initialization, selection, crossover, mutation,
-    elitism, and multi-generation optimization.
-    """
+    """Genetic algorithm searching for the fixed-size subset of unique gene indices maximizing a fitness function."""
 
     def __init__(
         self,
-        task: str = "minimize",
+        fitness_func: Callable[[Individual], float],
+        n_genes: int,
+        ind_size: int,
         pop_size: int = 50,
         crossover_prob: float = 0.9,
         mutation_prob: float = 0.2,
-        elitism: bool = True,
-        random_seed=42,
+        random_seed: int = 42,
         verbose: bool = False,
     ) -> None:
+        if ind_size > n_genes:
+            raise ValueError(f"ind_size ({ind_size}) cannot exceed n_genes ({n_genes}).")
 
-        self.task = task
+        self.fitness_func = fitness_func
+        self.n_genes = n_genes
+        self.ind_size = ind_size
         self.pop_size = pop_size
         self.crossover_prob = crossover_prob
         self.mutation_prob = mutation_prob
-        self.random_seed = random_seed
         self.verbose = verbose
 
-        # genetic operators
-        self.selector = tournament_selection
-        self.pair_crossover = one_point_crossover
-        self.mutator = uniform_mutation
-
-        self.elitism = elitism
+        self.rng = random.Random(random_seed)
         self.current_generation = 0
-        self.best_individuals = []
 
-        random.seed(self.random_seed)
+        self.population = init_population(self.pop_size, self.n_genes, self.ind_size, self.rng)
+        self._evaluate(self.population)
+        self.population.sort()
 
-    def __repr__(self):
+        self.best_solution = self.population.best_score()
+        self.best_individuals = [self.best_solution]
+
+        self.gene_counts = Counter()
+        self.total_individuals = 0
+        self._update_gene_counts()
+
+    def __repr__(self) -> str:
         return f"<GeneticAlgorithm gen={self.current_generation} pop_size={self.pop_size}>"
 
-    def set_fitness(self, fitness_func: Callable) -> None:
-        """Assign the fitness function used for individual evaluation."""
-        self.fitness = fitness_func
+    def _evaluate(self, population: Population) -> None:
+        """Score every individual in a population using the fitness function."""
+        for ind in population:
+            ind.score = self.fitness_func(ind)
 
-    def initialize(self, ind_space: range, ind_size: int) -> None:
-        """
-        Create an initial population of random individuals and evaluate them.
-        """
-        self.ind_space = ind_space
-        self.ind_size = ind_size
-        self.population = init_population(
-            task=self.task, pop_size=self.pop_size, ind_space=self.ind_space, ind_size=self.ind_size
-        )
-        self.population.evaluator = self.fitness
-        self.evaluate()
-        self.population.sort()
-        self.population.calc_stat()
-        self.best_solution = self.best_individual()
+    def _update_gene_counts(self) -> None:
+        """Accumulate how often each gene appears in the population, cumulatively across all generations."""
+        for ind in self.population:
+            self.gene_counts.update(ind.genes)
+        self.total_individuals += len(self.population)
 
-    def evaluate(self) -> "GeneticAlgorithm":
-        """Evaluate the current population."""
-        self.population.evaluate()
-        return self
-
-    def select(self) -> List[Individual]:
-        """Perform selection based on the defined selection operator."""
-        return [self.population[i] for i in self.selector(self.population)]
-
-    def crossover(self, mother, father):
-        """Perform crossover between two individuals."""
-        if random.random() <= self.crossover_prob:
-            sister, brother = self.pair_crossover(mother, father)
-        else:
-            sister, brother = deepcopy(mother), deepcopy(father)
-        return sister, brother
-
-    def mutate(self, individual: Individual, space: range, prob: float) -> Individual:
-        """Apply mutation to an individual."""
-        mutant = self.mutator(individual, space, prob=prob)
-        return mutant
-
-    def get_global_best(self):
-        """Return the best individual found across all generations."""
-        if self.task == "maximize":
-            return max(self.best_individuals, key=lambda x: x.score)
-        else:
-            return min(self.best_individuals, key=lambda x: x.score)
+    def _make_individual(self, parent_a: Individual, parent_b: Individual, new_population: Population) -> Individual:
+        """Create one individual via crossover + mutation, retrying on collision with new_population."""
+        max_retries = 20
+        child = parent_a
+        for _ in range(max_retries):
+            do_crossover = self.rng.random() <= self.crossover_prob
+            base = shuffle_crossover(parent_a, parent_b, self.rng) if do_crossover else parent_a
+            child = uniform_mutation(base, self.n_genes, self.mutation_prob, self.rng)
+            if child not in new_population:
+                break
+        return child
 
     def step(self) -> "GeneticAlgorithm":
-        """
-        Execute one iteration (generation) of the genetic algorithm."""
-        new_population = deepcopy(self.population)
-        new_population.clear()
+        """Advance the algorithm by one generation."""
 
-        mating_pool = self.select()
-        num_pair = len(self.population) // 2
-        for i in range(num_pair):
+        # 1. Selection: build a mating pool via tournament selection
+        new_population = Population()
+        mating_pool = tournament_selection(self.population, self.rng)
 
-            mother = mating_pool.pop(randint(0, len(mating_pool) - 1))
-            father = mating_pool.pop(randint(0, len(mating_pool) - 1))
+        # 2. Crossover + mutation: create two children from each mating pair
+        num_pairs = self.pop_size // 2
+        for _ in range(num_pairs):
+            mother = mating_pool.pop(self.rng.randrange(len(mating_pool)))
+            father = mating_pool.pop(self.rng.randrange(len(mating_pool)))
 
-            sister, brother = self.crossover(mother, father)
-            sister_mutated = self.mutate(sister, self.ind_space, prob=self.mutation_prob)
-            brother_mutated = self.mutate(brother, self.ind_space, prob=self.mutation_prob)
+            new_population.append(self._make_individual(mother, father, new_population))
+            new_population.append(self._make_individual(father, mother, new_population))
 
-            if sister_mutated not in self.population:
-                new_population.append(sister_mutated)
-                self.population.append(sister_mutated)
-
-            if brother_mutated not in self.population:
-                new_population.append(brother_mutated)
-                self.population.append(brother_mutated)
-
-        while len(new_population) < self.pop_size:
-            ind = init_individual(self.ind_space, self.ind_size)
-            if ind not in self.population:
-                new_population.append(ind)
-                self.population.append(ind)
-
-        if len(mating_pool):
+        # 3. Carry over the leftover parent when pop_size is odd
+        if len(new_population) < self.pop_size:
             new_population.append(mating_pool.pop())
 
-        new_population.evaluate()
+        # 4. Evaluate and sort the new generation
+        self._evaluate(new_population)
         new_population.sort()
-        self.best_individuals.append(deepcopy(new_population.best_score()))
 
-        if self.elitism:
-            if self.task == "maximize":
-                if self.best_solution.score > new_population.best_score().score:
-                    new_population[-1] = self.best_solution
-                else:
-                    self.best_solution = new_population.best_score()
-            else:
-                if self.best_solution.score < new_population.best_score().score:
-                    new_population[-1] = self.best_solution
-                else:
-                    self.best_solution = new_population.best_score()
+        # 5. Elitism: keep the best solution ever found alive in the population
+        if self.best_solution.score > new_population.best_score().score:
+            new_population.individuals[-1] = self.best_solution
+            new_population.sort()
+        else:
+            self.best_solution = new_population.best_score()
+        self.best_individuals.append(self.best_solution)
 
+        # 6. Replace the current population and advance the generation counter
         self.population = new_population
         self.current_generation += 1
+        self._update_gene_counts()
         return self
 
-    def run(self, n_iter: int = 50) -> None:
-        """Run the genetic algorithm for a specified number of generations."""
-        for i in range(n_iter):
+    def run(self, n_iter: int = 50) -> "GeneticAlgorithm":
+        """Run the algorithm for a fixed number of generations."""
+        for _ in range(n_iter):
             self.step()
             if self.verbose:
-                print(f"Iteration {self.current_generation}: best score -> {self.best_solution.score}")
+                self.report()
+        return self
 
-    def best_individual(self) -> Individual:
-        """Return the best individual in the current population."""
-        return self.population.best_score()
+    def calc_stat(self) -> dict:
+        """Compute this generation's participation and the run's cumulative popularity statistics."""
+        current_genes = set()
+        for ind in self.population:
+            current_genes.update(ind.genes)
+
+        popularity = [(gene, count / self.total_individuals * 100) for gene, count in self.gene_counts.most_common(5)]
+
+        stats = {
+            "n_participated": len(current_genes),
+            "n_total": self.n_genes,
+            "n_never_participated": self.n_genes - len(self.gene_counts),
+            "popularity": popularity,
+        }
+        return stats
+
+    def report(self) -> None:
+        """Print generation number, best score, model-participation counts, and top model popularity."""
+        stats = self.calc_stat()
+        popularity = "/".join(f"{gene}[{pct:.1f}%]" for gene, pct in stats["popularity"])
+        participation = f"{stats['n_participated']}/{stats['n_total']}/{stats['n_never_participated']}"
+        print(
+            f"Gen {self.current_generation} | "
+            f"Best score: {self.best_solution.score:.3f} | "
+            f"Models participated/total/remained: {participation} | "
+            f"Model popularity: {popularity}"
+        )
+
+    def get_solution(self) -> Individual:
+        """Return the best individual found across all generations."""
+        solution = max(self.best_individuals, key=attrgetter("score"))
+        return solution
 
 
-def init_individual(ind_space: range = None, ind_size: int = None) -> Individual:
-    """Create a random individual by sampling unique genes from the search space."""
-    ind = Individual(random.sample(ind_space, k=ind_size))
-    return ind
+def init_individual(n_genes: int, ind_size: int, rng: random.Random) -> Individual:
+    """Create a random individual: ind_size unique genes drawn from range(n_genes)."""
+    individual = Individual(rng.sample(range(n_genes), k=ind_size))
+    return individual
 
 
-def init_population(task: str = None, pop_size: int = None, ind_space: range = None, ind_size: int = None) -> Population:
-    """Generate a random population of unique individuals."""
-    population = Population(task=task)
+def init_population(pop_size: int, n_genes: int, ind_size: int, rng: random.Random) -> Population:
+    """Create a population of unique random individuals."""
+    population = Population()
     while len(population) < pop_size:
-        individual = init_individual(ind_space, ind_size)
-        if individual not in population:
-            population.append(individual)
+        candidate = init_individual(n_genes, ind_size, rng)
+        if candidate not in population:
+            population.append(candidate)
     return population
 
 
-def one_point_crossover(mother: Individual, father: Individual) -> Tuple[Individual, Individual]:
-    """Perform one-point crossover ensuring no duplicate genes in offspring."""
-    sister = deepcopy(mother)
-    brother = deepcopy(father)
-    for _ in range(100):
-        cut = random.randint(1, len(mother) - 1)
-        sister[cut:] = father[cut:]
-        brother[cut:] = mother[cut:]
-        if len(set(sister.container)) == len(set(brother.container)) == len(sister.container):
-            break
-
-    valid = (len(set(sister.container)) == len(set(brother.container)) == len(sister))
-    if not valid:
-        return deepcopy(mother), deepcopy(father)
-
-    return sister, brother
+def shuffle_crossover(mother: Individual, father: Individual, rng: random.Random) -> Individual:
+    """Child is a random sample from the parents' combined gene pool (always valid, no duplicates)."""
+    pool = list(set(mother.genes) | set(father.genes))
+    individual = Individual(rng.sample(pool, k=len(mother.genes)))
+    return individual
 
 
-def uniform_mutation(individual: Individual, ind_space: range, prob: float = 0) -> Individual:
-    """Mutate genes with uniform probability while maintaining gene uniqueness."""
-    mutant = deepcopy(individual)
-    for _ in range(100):
-        for n, gen in enumerate(mutant):
-            if random.random() < prob:
-                mutant[n] = random.choice(ind_space)
-        if len(set(mutant.container)) == len(mutant.container):
-            return mutant
+def uniform_mutation(individual: Individual, n_genes: int, prob: float, rng: random.Random) -> Individual:
+    """Randomly replace some genes with values not already present in the individual."""
+    genes = list(individual.genes)
+    for i in range(len(genes)):
+        if rng.random() < prob:
+            unused = set(range(n_genes)) - set(genes)
+            if unused:
+                genes[i] = rng.choice(list(unused))
+    mutant = Individual(genes)
     return mutant
 
 
-def tournament_selection(population: Population) -> List[int]:
-    """Perform tournament selection based on individual scores."""
+def tournament_selection(population: Population, rng: random.Random) -> List[Individual]:
+    """Select len(population) individuals via pairwise score tournaments."""
     selected = []
     for _ in range(len(population)):
-        competitors = random.sample(range(len(population)), 2)
-        if population.task == "maximize":
-            winner = max(competitors, key=lambda i: population[i].score)
-        else:
-            winner = min(competitors, key=lambda i: population[i].score)
-        selected.append(winner)
+        a, b = rng.sample(population.individuals, 2)
+        selected.append(a if a.score > b.score else b)
     return selected
-
-
-def key_raw_score(individual: Individual) -> float:
-    """Return an individual's raw score (used as sort key)."""
-    return individual.score
-
-
-def key_fitness_score(individual: Individual) -> float:
-    """Return an individual's fitness score (used as sort key)."""
-    return individual.fitness
