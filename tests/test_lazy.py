@@ -138,8 +138,9 @@ def test_build_model_hopt_false_skips_tuning():
     assert len(pred_test) == 1
 
 
-def test_build_model_hopt_true_uses_reduced_grid_for_random_forest(monkeypatch):
+def test_build_model_hopt_true_uses_default_grid_for_random_forest(monkeypatch):
     from sklearn.ensemble import RandomForestRegressor
+    from qsarcons.hopt import DEFAULT_PARAM_GRID_REGRESSORS
 
     seen_grids = []
     orig_init = lazy_mod.StepwiseHopt.__init__
@@ -153,7 +154,7 @@ def test_build_model_hopt_true_uses_reduced_grid_for_random_forest(monkeypatch):
     x_train, x_val, x_test, y_train, y_val = _tiny_matrices()
     build_model(x_train, x_val, x_test, y_train, y_val, RandomForestRegressor, hopt=True, task="continuous")
 
-    assert seen_grids == [lazy_mod.REDUCED_PARAM_GRID_REGRESSORS["RandomForestRegressor"]]
+    assert seen_grids == [DEFAULT_PARAM_GRID_REGRESSORS["RandomForestRegressor"]]
 
 
 def test_build_model_hopt_true_uses_default_grid_for_ridge(monkeypatch):
@@ -380,8 +381,3 @@ def test_lazyml_run_empty_test_set(monkeypatch, tmp_path):
 def test_default_descriptors_are_callable():
     for name, calculator in lazy_mod.DESCRIPTORS.items():
         assert callable(calculator), name
-
-
-def test_reduced_grids_only_cover_mlp_and_random_forest():
-    assert set(lazy_mod.REDUCED_PARAM_GRID_REGRESSORS) == {"MLPRegressor", "RandomForestRegressor"}
-    assert set(lazy_mod.REDUCED_PARAM_GRID_CLASSIFIERS) == {"MLPClassifier", "RandomForestClassifier"}
