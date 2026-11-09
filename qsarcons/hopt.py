@@ -1,7 +1,7 @@
 import time
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import get_scorer
-from sklearn.utils.multiclass import type_of_target
+from qsarcons.utils import detect_task
 from sklearn.base import is_classifier
 
 
@@ -142,9 +142,9 @@ class StepwiseHopt:
 
     def fit(self, x, y):
 
-        if type_of_target(y) == "continuous":
+        if detect_task(y) == "continuous":
             scoring = "r2"
-        elif type_of_target(y) == "binary":
+        elif detect_task(y) == "binary":
             scoring = "f1"
         else:
             raise ValueError("Unknown target type")

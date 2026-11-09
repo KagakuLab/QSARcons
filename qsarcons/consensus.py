@@ -8,7 +8,7 @@ from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_err
 from sklearn.metrics import roc_auc_score, average_precision_score, f1_score
 from abc import ABC, abstractmethod
 from qsarcons.genopt import Individual, GeneticAlgorithm
-from sklearn.utils.multiclass import type_of_target
+from qsarcons.utils import detect_task
 from amltk.ensembling.weighted_ensemble_caruana import weighted_ensemble_caruana
 
 METRIC_MODES = {
@@ -21,7 +21,7 @@ def calc_accuracy(y_true, y_pred):
 
     y_true, y_pred = list(y_true), list(y_pred)
 
-    task_type = type_of_target(y_true)
+    task_type = detect_task(y_true)
     if task_type == "continuous":
         return  r2_score(y_true, y_pred)
     elif task_type == "binary":
@@ -56,7 +56,7 @@ class ConsensusSearch(ABC):
     def run(self, x: DataFrame, y: List):
         """Execute consensus model search."""
 
-        self._task_type = type_of_target(y)
+        self._task_type = detect_task(y)
 
         x_filtered = self._filter_models(x, y)
         if len(x_filtered.columns) < max(self.cons_size_candidates):
@@ -64,6 +64,7 @@ class ConsensusSearch(ABC):
             x_filtered = x
 
         if isinstance(self.cons_size, int):
+            self.best_size_ = self.cons_size
             return self._run_with_cons_size(x_filtered, y, self.cons_size)
 
         elif self.cons_size == 'auto':
@@ -75,6 +76,7 @@ class ConsensusSearch(ABC):
                 if best_score is None or score > best_score:
                     best_score = score
                     best_cons = candidate
+                    self.best_size_ = size
             return list(best_cons)
 
     def predict(self, x_subset: DataFrame) -> List:

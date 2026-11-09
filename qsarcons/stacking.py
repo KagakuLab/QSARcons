@@ -1,6 +1,6 @@
 from typing import Optional, List
 import pandas as pd
-from sklearn.utils.multiclass import type_of_target
+from qsarcons.utils import detect_task
 from qsarcons.hopt import StepwiseHopt, DEFAULT_PARAM_GRID_REGRESSORS, DEFAULT_PARAM_GRID_CLASSIFIERS
 from qsarcons.logging import OutputSuppressor
 
@@ -22,7 +22,7 @@ class StackingAggregation:
 
             est_name = self.meta_model.__class__.__name__
 
-            task_type = type_of_target(y)
+            task_type = detect_task(y)
             if task_type == "binary":
                 param_grid = DEFAULT_PARAM_GRID_CLASSIFIERS.get(est_name)
             elif task_type == "continuous":

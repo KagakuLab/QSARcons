@@ -3,7 +3,7 @@ import pandas as pd
 
 from typing import List, Union, Optional
 from pandas import DataFrame, Series, Index
-from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
+from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error, f1_score
 from .consensus import ConsensusSearch
 from amltk.ensembling.weighted_ensemble_caruana import weighted_ensemble_caruana
 
@@ -15,6 +15,7 @@ class CaruanaSearch(ConsensusSearch):
         self.n_iter = n_iter
         self.seed = seed
         self.weights_ = None
+        self._weights_by_size = {}
 
     def _metric(self, y_true, y_pred):
         if self._task_type == "continuous":
@@ -38,7 +39,15 @@ class CaruanaSearch(ConsensusSearch):
 
         # Store weights for weighted prediction
         self.weights_ = {k: v for k, v in weights.items() if v > 0}
+        self._weights_by_size[cons_size] = self.weights_
         return list(self.weights_.keys())
+
+    def run(self, x: DataFrame, y: Series):
+        """Run the search, then restore the weights of the winning size (the loop leaves those of the last one)."""
+        self._weights_by_size = {}
+        best_cons = super().run(x, y)
+        self.weights_ = self._weights_by_size[self.best_size_]
+        return best_cons
 
     def predict(self, x_subset: DataFrame) -> List:
         """Weighted average prediction using Caruana weights."""
