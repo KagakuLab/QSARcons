@@ -9,7 +9,6 @@ from sklearn.metrics import roc_auc_score, average_precision_score, f1_score
 from abc import ABC, abstractmethod
 from qsarcons.genopt import Individual, GeneticAlgorithm
 from qsarcons.utils import detect_task
-from amltk.ensembling.weighted_ensemble_caruana import weighted_ensemble_caruana
 
 METRIC_MODES = {
     "r2": "maximize",
@@ -89,7 +88,6 @@ class ConsensusSearch(ABC):
             majority = (votes >= (x_subset.shape[1] / 2)).astype(int)
             return list(majority)
 
-
 class RandomSearch(ConsensusSearch):
     """Randomized search for optimal regression consensus."""
 
@@ -121,6 +119,7 @@ class SystematicSearch(ConsensusSearch):
         scores.sort(key=lambda tup: tup[1], reverse=True)
         top_cols = [col for col, _ in scores[:cons_size]]
         return list(top_cols)
+
 
 class GeneticSearch(ConsensusSearch):
     """Genetic algorithm-based search for optimal regression consensus. """
@@ -161,4 +160,5 @@ class GeneticSearch(ConsensusSearch):
             print()
 
         return x.columns[list(ga.get_solution().genes)]
+
 
